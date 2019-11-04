@@ -13,7 +13,7 @@ let speed = 0.01;
 let PlayerAngle = 0;
 
 function setup() {
-  createCanvas(fieldWidth*2, fieldHeight);
+  createCanvas(fieldWidth, fieldHeight);
   ScorePos[0] = (fieldWidth-ScoreWidth)/2;
   ScorePos[1] = 0;
   PlayerPos[0] = Math.random()*(fieldWidth-2*marginWidth)+marginWidth;
@@ -85,7 +85,8 @@ class fuzzyFunction{
   }
 
   graph(x,y,scaleX,scaleY){
-    for(let i =0; i < f.length-1; i++){
+    line(x,y,x+100,y);
+    for(let i =0; i < this.length-1; i++){
       line(x + this.x[i]*scaleX, y + this.y[i]*scaleY, x + this.x[i+1]*scaleX, y + this.y[i+1]*scaleY);
     }
   }
