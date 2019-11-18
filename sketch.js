@@ -115,13 +115,21 @@ class fuzzyFunction {
 
 
 let domainDistance = [0, 25, 50, 100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375, 400, 425, 450, 475, 500, 525, 550, 575, 600, 625, 650];
-let domainDireccion = [-4.0, -3.0, -2.0, -1.0, 0, 1.0, 2.0, 3.0, 4]
+let domainDireccion = [-4.0, -3.0, -2.0, -1.0, 0, 1.0, 2.0, 3.0, 4.0]
+let domain = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
 let lejos = new fuzzyFunction(domainDistance, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.25, 0.375, 0.5, 0.75, 0.875, 1.0]);
 let cerca = new fuzzyFunction(domainDistance, [1.0, 0.875, 0.75, 0.5, 0.375, 0.25, 0.125, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
 let izquierda = new fuzzyFunction(domainDireccion, [1.0, 0.75, 0.50, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0]);
 let derecha = new fuzzyFunction(domainDireccion, [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.50, 0.75, 1.0]);
 let centro = new fuzzyFunction(domainDireccion, [0.0, 0.25, 0.50, 0.75, 1.0, 0.75, 0.5, 0.25, 0.0]);
+
+let movermeBastante = new fuzzyFunction(domain, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 10.0, 15.0, 20.0]);
+let movermePoco = new fuzzyFunction(domain, [20.0, 15.0, 10.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+let girarDerecha = new fuzzyFunction(domain, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 1.0, 1.5, 2.0]);
+let girarIzquierda = new fuzzyFunction(domain, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5, -1.0, -1.5, -2.0]);
+let nogirar = new fuzzyFunction(domain, [1.0, 0.5, 0.25, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
 
 function move() {
     PlayerAngle = atan2(BallPos[1] - PlayerPos[1], BallPos[0] - PlayerPos[0]) - HALF_PI;
@@ -133,6 +141,17 @@ function move() {
 
 function getAngle() {
     return atan2(BallPos[1] - PlayerPos[1], BallPos[0] - PlayerPos[0]);
+}
+
+function getDistance() {
+    return Math.sqrt(Math.pow(2, (PlayerPos[0] - BallPos[0])) + Math.pow(2, (PlayerPos[1] - BallPos[1])))
+}
+
+function resultmove(distance, angle) {
+    PlayerPos[0] = PlayerPos[0] + distance
+    PlayerPos[1] = PlayerPos[1] + distance
+    PlayerAngle = atan2(BallPos[1] - PlayerPos[1], BallPos[0] - PlayerPos[0]) - angle;
+
 }
 
 function fuzzyOr(f, g) {
@@ -189,7 +208,7 @@ function fuzzyAgregation(F) {
 }
 
 function setup() {
-    frameRate(3);
+    frameRate(1);
     createCanvas(2 * fieldWidth, fieldHeight);
     ScorePos[0] = (fieldWidth - ScoreWidth) / 2;
     ScorePos[1] = 0;
@@ -199,7 +218,6 @@ function setup() {
     BallPos[1] = Math.random() * (fieldHeight - 2 * marginWidth) + marginWidth;
     PlayerAngle = Math.random() * 6;
 }
-
 
 function draw() {
     background(225);
@@ -220,53 +238,87 @@ function draw() {
     triangle(-10, -20, 10, -20, 0, 20);
     pop();
 
+    playerDistance = getDistance()
+    playerDireccion = getAngle()
+
+    // calculo de lasa clausulas de Horn
+    //Si esta lejos y a la izquierda   --> moverme bastante y a la derecha
+    let horn1A = fuzzyImplication(fuzzyAnd(lejos.eval(playerDistance), izquierda.eval(playerDireccion)), movermeBastante);
+    let horn1B = fuzzyImplication(fuzzyAnd(lejos.eval(playerDistance), izquierda.eval(playerDireccion)), girarDerecha);
+    // Si esta cerca y a la izquierda   --> moverme poco y a la derecha
+    let horn2A = fuzzyImplication(fuzzyAnd(cerca.eval(playerDistance), izquierda.eval(playerDireccion)), movermePoco);
+    let horn2B = fuzzyImplication(fuzzyAnd(cerca.eval(playerDistance), izquierda.eval(playerDireccion)), girarDerecha);
+    // Si esta lejos y a la derecha     --> moverme bastante y a la izquierda
+    let horn3A = fuzzyImplication(fuzzyAnd(lejos.eval(playerDistance), derecha.eval(playerDireccion)), movermeBastante);
+    let horn3B = fuzzyImplication(fuzzyAnd(lejos.eval(playerDistance), derecha.eval(playerDireccion)), girarIzquierda);
+    // Si esta cerca y a la derecha     --> moverme poco y a la izquierda
+    let horn4A = fuzzyImplication(fuzzyAnd(cerca.eval(playerDistance), derecha.eval(playerDireccion)), movermePoco);
+    let horn4B = fuzzyImplication(fuzzyAnd(cerca.eval(playerDistance), derecha.eval(playerDireccion)), girarIzquierda);
+    // Si esta lejos y al centro        --> moverme bastante al centro  
+    let horn5A = fuzzyImplication(fuzzyAnd(lejos.eval(playerDistance), centro.eval(playerDireccion)), movermeBastante);
+    let horn5B = fuzzyImplication(fuzzyAnd(lejos.eval(playerDistance), centro.eval(playerDireccion)), nogirar);
+    // Si esta cerca y al centro        --> moverme poco al centro 
+    let horn6A = fuzzyImplication(fuzzyAnd(cerca.eval(playerDistance), centro.eval(playerDireccion)), movermePoco);
+    let horn6B = fuzzyImplication(fuzzyAnd(cerca.eval(playerDistance), centro.eval(playerDireccion)), nogirar);
+
+    //Agregación distance
+    let FDis = fuzzyAgregation([horn1A, horn2A, horn3A, horn4A, horn5A, horn6A]);
+    let centroideDis = FDis.defuzzify();
+
+    //Agregación direccion
+    let FDir = fuzzyAgregation([horn1B, horn2B, horn3B, horn4B, horn5B, horn6B]);
+    let centroideDir = FDir.defuzzify();
+
+    resultmove(centroideDis, centroideDir);
+
+
     /*
-    // Obtener las graficas de las implicaciones y de agregacion
-    let F1 = fuzzyImplication(fuzzyOr(f1.eval(frameCount % 10), f2.eval(frameCount * 2 % 10)), g1);
-    let F2 = fuzzyImplication(f3.eval(frameCount % 10), g2);
-    let F3 = fuzzyImplication(fuzzyOr(f4.eval(frameCount % 10), f5.eval(frameCount * 3 % 10)), g3);
-    let F = fuzzyAgregation([F1, F2, F3]);
-    let centroide = F.defuzzify();
-  
+        // Obtener las graficas de las implicaciones y de agregacion
+        let F1 = fuzzyImplication(fuzzyOr(f1.eval(frameCount % 10), f2.eval(frameCount * 2 % 10)), g1);
+        let F2 = fuzzyImplication(f3.eval(frameCount % 10), g2);
+        let F3 = fuzzyImplication(fuzzyOr(f4.eval(frameCount % 10), f5.eval(frameCount * 3 % 10)), g3);
+        let F = fuzzyAgregation([F1, F2, F3]);
+        let centroide = F.defuzzify();
+      
 
-    // Dibujar las graficas
-    let k = 0;
-    let l = 0;
-    l = 2;
+        // Dibujar las graficas
+        let k = 0;
+        let l = 0;
+        l = 2;
 
-    // Graficas umbral
-    g1.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
-    k = 1;
-    g2.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
-    k = 2;
-    g3.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
-    // Graficas de datos de entrada
-    k = 0;
-    l = 0;
-    f1.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
-    l = 1;
-    f2.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
-    k = 1;
-    l = 0;
-    f3.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
-    k = 2;
-    l = 0;
-    f4.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
-    l = 1;
-    f5.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
-    // implicaciones
-    k = 0;
-    l = 3;
-    F1.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
-    k = 1;
-    F2.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
-    k = 2;
-    F3.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
-    // Agregation
-    k = 3;
-    l = 3;
-    F.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
-    // Mover
-    //move();
-  */
+        // Graficas umbral
+        g1.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
+        k = 1;
+        g2.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
+        k = 2;
+        g3.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
+        // Graficas de datos de entrada
+        k = 0;
+        l = 0;
+        f1.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
+        l = 1;
+        f2.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
+        k = 1;
+        l = 0;
+        f3.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
+        k = 2;
+        l = 0;
+        f4.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
+        l = 1;
+        f5.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth, 3 - l);
+        // implicaciones
+        k = 0;
+        l = 3;
+        F1.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
+        k = 1;
+        F2.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
+        k = 2;
+        F3.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
+        // Agregation
+        k = 3;
+        l = 3;
+        F.graph(graphLeft + l * graphWidth, graphTop + (k + 0.8) * graphHeigth, graphLeft + (l + 0.8) * graphWidth, graphTop + k * graphHeigth);
+        // Mover
+        //move();
+      */
 }
